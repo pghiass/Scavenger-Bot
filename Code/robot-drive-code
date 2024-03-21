@@ -316,7 +316,7 @@ void loop() {
                         case 1:// Rotate 90 degrees CW
                           Serial.print("case 1 start - turn 90 CW"); //turning CW will be adding onto the Encoder value, CCW will be subtracting
                           Bot.Right("D1", 255, 255);
-                          if (abs(LeftEncoder.lRawEncoderCount) >= 1273/2){ // 1273 => 180 degree rotation
+                          if (abs(LeftEncoder.lRawEncoderCount) >= 1273){ // 1273 => 180 degree rotation (for LAB 3 bot)
                             Serial.print("case 1 end");
                             LeftEncoder.clearEncoder();
                             RightEncoder.clearEncoder();
@@ -329,6 +329,8 @@ void loop() {
                           Bot.Forward("D1", leftDriveSpeed, rightDriveSpeed); //drive ID, left speed, right speed
                           if (abs(LeftEncoder.lRawEncoderCount) >= 2077){ // 2077 => 25 cm forward
                             Serial.print("case 2 end");
+                            LeftEncoder.clearEncoder();
+                            RightEncoder.clearEncoder();
                             // delay(1000);
                             driveIndex = 3;
                           }
@@ -336,20 +338,60 @@ void loop() {
 
 
                         case 3:
-                        Bot.Stop("D1");
-                        driveIndex = 4;
+                        Serial.print("case 1 start - turn 90 CW"); //turning CW will be adding onto the Encoder value, CCW will be subtracting
+                          Bot.Right("D1", 255, 255);
+                          if (abs(LeftEncoder.lRawEncoderCount) >= 1273){ // 1273 => 180 degree rotation (for LAB 3 bot)
+                            Serial.print("case 1 end");
+                            LeftEncoder.clearEncoder();
+                            RightEncoder.clearEncoder();
+                            driveIndex = 4; //go to case 2
+                          }
                         break;
 
                         case 4:
+                        Bot.Forward("D1", 255, 255);   //drive ID, left speed, right speed
+                          if (abs(LeftEncoder.lRawEncoderCount) >= 8306){ // 8306 => 100 cm
+                           Serial.print("case 0 end");
+                          //  delay(1000); //I know the prof does not like delay but I don't know what else to use....
+                           LeftEncoder.clearEncoder();
+                           RightEncoder.clearEncoder();
+                           driveIndex = 5; //go to case1
+                          }
                         break;
 
                         case 5:
+                        Bot.Left("D1", 255, 255);
+                          if (abs(LeftEncoder.lRawEncoderCount) >= 1273){ // 1273 => 180 degree rotation (for LAB 3 bot)
+                            Serial.print("case 1 end");
+                            LeftEncoder.clearEncoder();
+                            RightEncoder.clearEncoder();
+                            driveIndex = 6; //go to case 2
+                          }
                         break;
 
                         case 6:
+                        Bot.Forward("D1", leftDriveSpeed, rightDriveSpeed); //drive ID, left speed, right speed
+                          if (abs(LeftEncoder.lRawEncoderCount) >= 2077){ // 2077 => 25 cm forward
+                            Serial.print("case 2 end");
+                            LeftEncoder.clearEncoder();
+                            RightEncoder.clearEncoder();
+                            // delay(1000);
+                            driveIndex = 7;
+                          }
                         break;
 
-                        case 7:  
+                        case 7: 
+                        Bot.Left("D1", 255, 255);
+                          if (abs(LeftEncoder.lRawEncoderCount) >= 1273){ // 1273 => 180 degree rotation (for LAB 3 bot)
+                            Serial.print("case 1 end");
+                            LeftEncoder.clearEncoder();
+                            RightEncoder.clearEncoder();
+                            driveIndex = 8; //go to case 2
+                          } 
+                        break;
+                        case 8:
+                        Bot.Stop("D1");
+                        driveIndex = 9;
                         break;
                      }
                 // }
