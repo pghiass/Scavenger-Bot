@@ -82,21 +82,15 @@ const int cCountsRev = 1096; // number of encoder counts per revolution
 // IMPORTANT: The constants in this section need to be set to appropriate values for your robot. 
 //            You will have to experiment to determine appropriate values.
 
-const int cClawServoOpen = 1000;                                               // Value for open position of claw
-const int cClawServoClosed = 2150;                                             // Value for closed position of claw
-const int cArmServoUp = 2200;                                                  // Value for shoulder of arm fully up
-const int cArmServoDown = 1000;                                                // Value for shoulder of arm fully down
 const int cLeftAdjust = 0;                                                     // Amount to slow down left motor relative to right
-const int cRightAdjust = 0; // value was 4 when adjusted                       // Amount to slow down right motor relative to left
+const int cRightAdjust = 10; // to account for excess left movement            // Amount to slow down right motor relative to left
 
 //=====================================================================================================================
 
 
 // Variables
-// Variables
 boolean motorsEnabled = true;                                                  // motors enabled flag
 boolean timeUp3sec = false;                                                    // 3 second timer elapsed flag
-boolean timeUp2sec = false;                                                    // 2 second timer elapsed flag
 boolean timeUp200msec = false;                                                 // 200 millisecond timer elapsed flag
 unsigned char leftDriveSpeed;                                                  // motor drive speed (0-255)
 unsigned char rightDriveSpeed;                                                 // motor drive speed (0-255)
@@ -184,16 +178,15 @@ void loop() {
    long pos[] = {0, 0};                                                        // current motor positions
    int pot = 0;                                                                // raw ADC value from pot
 
-   //mycode
-  LeftEncoder.getEncoderRawCount();                           //read left encoder count
-  RightEncoder.getEncoderRawCount();
+   // mycode
+   LeftEncoder.getEncoderRawCount();                           //read left encoder count
+   RightEncoder.getEncoderRawCount();
    Serial.print("Left Encoder count = ");
    Serial.print(LeftEncoder.lRawEncoderCount);
    Serial.print("Right Encoder count = ");
    Serial.println(RightEncoder.lRawEncoderCount);
-    //
 
-    currentMicros = micros();                                                   // get current time in microseconds
+   currentMicros = micros();                                                   // get current time in microseconds
    if ((currentMicros - previousMicros) >= 1000) {                             // enter when 1 ms has elapsed
       previousMicros = currentMicros;                                          // record current time in microseconds
 
@@ -202,13 +195,6 @@ void loop() {
       if (timerCount3sec > 3000) {                                             // if 3 seconds have elapsed
          timerCount3sec = 0;                                                   // reset 3 second timer count
          timeUp3sec = true;                                                    // indicate that 3 seconds have elapsed
-      }
-   
-      // 2 second timer, counts 2000 milliseconds
-      timerCount2sec = timerCount2sec + 1;                                     // increment 2 second timer count
-      if (timerCount2sec > 2000) {                                             // if 2 seconds have elapsed
-         timerCount2sec = 0;                                                   // reset 2 second timer count
-         timeUp2sec = true;                                                    // indicate that 2 seconds have elapsed
       }
    
       // 200 millisecond timer, counts 200 milliseconds
@@ -268,13 +254,12 @@ void loop() {
             LeftEncoder.clearEncoder();                                        // clear encoder counts
             RightEncoder.clearEncoder();
             driveIndex = 0;                                                    // reset drive index
-            timeUp2sec = false;                                                // reset 2 second timer
             break;
 
 
           case 1: // Run robot
             if (timeUp3sec) {                                                  // pause for 3 sec before running case 1 code
-               // Read pot to update drive motor speed
+              // Read pot to update drive motor speed
               //  pot = analogRead(POT_R1);
               //  leftDriveSpeed = map(pot, 0, 4095, cMinPWM, cMaxPWM) - cLeftAdjust;
               //  rightDriveSpeed = map(pot, 0, 4095, cMinPWM, cMaxPWM) - cRightAdjust;
