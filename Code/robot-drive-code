@@ -38,8 +38,8 @@
 
 
 // Uncomment keywords to enable debugging output
-#define DEBUG_DRIVE_SPEED    1
-#define DEBUG_ENCODER_COUNT  1
+// #define DEBUG_DRIVE_SPEED    1
+// #define DEBUG_ENCODER_COUNT  1
 
 
 #include <Arduino.h>
@@ -87,7 +87,7 @@ const int cClawServoClosed = 2150;                                             /
 const int cArmServoUp = 2200;                                                  // Value for shoulder of arm fully up
 const int cArmServoDown = 1000;                                                // Value for shoulder of arm fully down
 const int cLeftAdjust = 0;                                                     // Amount to slow down left motor relative to right
-const int cRightAdjust = 0;                                                    // Amount to slow down right motor relative to left
+const int cRightAdjust = 0; // value was 4 when adjusted                       // Amount to slow down right motor relative to left
 
 //=====================================================================================================================
 
@@ -110,6 +110,7 @@ unsigned long timerCount200msec = 0;                                           /
 unsigned long displayTime;                                                     // heartbeat LED update timer
 unsigned long previousMicros;                                                  // last microsecond count
 unsigned long currentMicros;                                                   // current microsecond count
+int numOfLoops = 0; // number of cycles the robot will go back and forth 
 
 
 // Declare SK6812 SMART LED object
@@ -145,7 +146,7 @@ unsigned int  modeIndicator[6] = {                                             /
 Motion Bot = Motion();                                                         // Instance of Motion for motor control
 Encoders LeftEncoder = Encoders();                                             // Instance of Encoders for left encoder data
 Encoders RightEncoder = Encoders();                                            // Instance of Encoders for right encoder data
-IR Scan = IR();                                                                // instance of IR for detecting IR signals
+// IR Scan = IR();                                                                // instance of IR for detecting IR signals
 
 //my code
 int rotationCounter= 1;
@@ -165,7 +166,7 @@ void setup() {
    LeftEncoder.Begin(ENCODER_LEFT_A, ENCODER_LEFT_B, &Bot.iLeftMotorRunning ); // set up left encoder
    RightEncoder.Begin(ENCODER_RIGHT_A, ENCODER_RIGHT_B, &Bot.iRightMotorRunning ); // set up right encoder
  
-   Scan.Begin(IR_DETECTOR, 1200);                                              //set up IR Detection @ 1200 baud
+  //  Scan.Begin(IR_DETECTOR, 1200);                                              //set up IR Detection @ 1200 baud
   
    // Set up SmartLED
    SmartLEDs.begin();                                                          // initialize smart LEDs object (REQUIRED)
@@ -274,9 +275,11 @@ void loop() {
           case 1: // Run robot
             if (timeUp3sec) {                                                  // pause for 3 sec before running case 1 code
                // Read pot to update drive motor speed
-               pot = analogRead(POT_R1);
-               leftDriveSpeed = map(pot, 0, 4095, cMinPWM, cMaxPWM) - cLeftAdjust;
-               rightDriveSpeed = map(pot, 0, 4095, cMinPWM, cMaxPWM) - cRightAdjust;
+              //  pot = analogRead(POT_R1);
+              //  leftDriveSpeed = map(pot, 0, 4095, cMinPWM, cMaxPWM) - cLeftAdjust;
+              //  rightDriveSpeed = map(pot, 0, 4095, cMinPWM, cMaxPWM) - cRightAdjust;
+              leftDriveSpeed = 255 - cLeftAdjust;
+              rightDriveSpeed = 255 - cRightAdjust;
 #ifdef DEBUG_DRIVE_SPEED 
                Serial.print(F(" Left Drive Speed: Pot R1 = "));
                Serial.print(pot);
@@ -298,50 +301,37 @@ void loop() {
           
 
               if (motorsEnabled) {                                            // run motors only if enabled
-                  // if (timeUp2sec) {                                            // update drive state after 2 seconds
-                     timeUp2sec = false;                                       // reset 2 second timer
                      switch(driveIndex) {                                      // cycle through drive states
                         case 0: // Drive Forward
-                          Serial.print("case 0 start - drive forward");
-                          Bot.Forward("D1", 255, 255);   //drive ID, left speed, right speed
+                          Bot.Forward("D1", leftDriveSpeed, rightDriveSpeed);   //drive ID, left speed, right speed
                           if (abs(LeftEncoder.lRawEncoderCount) >= 8306){ // 8306 => 100 cm
-                           Serial.print("case 0 end");
-                          //  delay(1000); //I know the prof does not like delay but I don't know what else to use....
                            LeftEncoder.clearEncoder();
                            RightEncoder.clearEncoder();
                            driveIndex = 1; //go to case1
                           }
-                         break;
+                        break;
 
                         case 1:// Rotate 90 degrees CW
-                          Serial.print("case 1 start - turn 90 CW"); //turning CW will be adding onto the Encoder value, CCW will be subtracting
                           Bot.Right("D1", 255, 255);
                           if (abs(LeftEncoder.lRawEncoderCount) >= 1273){ // 1273 => 180 degree rotation (for LAB 3 bot)
-                            Serial.print("case 1 end");
                             LeftEncoder.clearEncoder();
                             RightEncoder.clearEncoder();
                             driveIndex = 2; //go to case 2
                           }
-                          break;
+                        break;
 
                         case 2:  //drive forward 25 cm
-                          Serial.print("case 2 start - drive forward again");
                           Bot.Forward("D1", leftDriveSpeed, rightDriveSpeed); //drive ID, left speed, right speed
                           if (abs(LeftEncoder.lRawEncoderCount) >= 2077){ // 2077 => 25 cm forward
-                            Serial.print("case 2 end");
                             LeftEncoder.clearEncoder();
                             RightEncoder.clearEncoder();
-                            // delay(1000);
                             driveIndex = 3;
                           }
-                            break;
-
+                        break;
 
                         case 3:
-                        Serial.print("case 1 start - turn 90 CW"); //turning CW will be adding onto the Encoder value, CCW will be subtracting
                           Bot.Right("D1", 255, 255);
                           if (abs(LeftEncoder.lRawEncoderCount) >= 1273){ // 1273 => 180 degree rotation (for LAB 3 bot)
-                            Serial.print("case 1 end");
                             LeftEncoder.clearEncoder();
                             RightEncoder.clearEncoder();
                             driveIndex = 4; //go to case 2
@@ -349,10 +339,8 @@ void loop() {
                         break;
 
                         case 4:
-                        Bot.Forward("D1", 255, 255);   //drive ID, left speed, right speed
+                        Bot.Forward("D1", leftDriveSpeed, rightDriveSpeed);   //drive ID, left speed, right speed
                           if (abs(LeftEncoder.lRawEncoderCount) >= 8306){ // 8306 => 100 cm
-                           Serial.print("case 0 end");
-                          //  delay(1000); //I know the prof does not like delay but I don't know what else to use....
                            LeftEncoder.clearEncoder();
                            RightEncoder.clearEncoder();
                            driveIndex = 5; //go to case1
@@ -361,8 +349,7 @@ void loop() {
 
                         case 5:
                         Bot.Left("D1", 255, 255);
-                          if (abs(LeftEncoder.lRawEncoderCount) >= 1273){ // 1273 => 180 degree rotation (for LAB 3 bot)
-                            Serial.print("case 1 end");
+                          if (abs(RightEncoder.lRawEncoderCount) >= 1273){ // 1273 => 180 degree rotation (for LAB 3 bot)
                             LeftEncoder.clearEncoder();
                             RightEncoder.clearEncoder();
                             driveIndex = 6; //go to case 2
@@ -372,61 +359,71 @@ void loop() {
                         case 6:
                         Bot.Forward("D1", leftDriveSpeed, rightDriveSpeed); //drive ID, left speed, right speed
                           if (abs(LeftEncoder.lRawEncoderCount) >= 2077){ // 2077 => 25 cm forward
-                            Serial.print("case 2 end");
                             LeftEncoder.clearEncoder();
                             RightEncoder.clearEncoder();
-                            // delay(1000);
                             driveIndex = 7;
                           }
                         break;
 
                         case 7: 
                         Bot.Left("D1", 255, 255);
-                          if (abs(LeftEncoder.lRawEncoderCount) >= 1273){ // 1273 => 180 degree rotation (for LAB 3 bot)
-                            Serial.print("case 1 end");
+                          if (abs(RightEncoder.lRawEncoderCount) >= 1273){ // 1273 => 180 degree rotation (for LAB 3 bot)
                             LeftEncoder.clearEncoder();
                             RightEncoder.clearEncoder();
-                            driveIndex = 8; //go to case 2
+                            if (numOfLoops>=2) { // if loop num == 2, stop looping
+                              driveIndex = 8; 
+                            }
+                            else {
+                              driveIndex = 0;
+                              numOfLoops++; // initially zero
+                            }
                           } 
                         break;
+
                         case 8:
+                        Bot.Left("D1", 255, 255); // turn robot to go back to start
+                          if (abs(RightEncoder.lRawEncoderCount) >= 1273){ // 90 degree rotation (scavenger bot)   // 1273 => 180 degree rotation (for LAB 3 bot)
+                            LeftEncoder.clearEncoder();
+                            RightEncoder.clearEncoder();
+                            driveIndex = 9; //go to case 2
+                          }
+                        break;
+
+                        case 9: // drive back to start
+                        Bot.Forward("D1", leftDriveSpeed, rightDriveSpeed); //drive ID, left speed, right speed
+                          if (abs(LeftEncoder.lRawEncoderCount) >= 2180*2*3){ // 25cm * 2 times per cycle * 3 cycles => encoder counts
+                            LeftEncoder.clearEncoder();
+                            RightEncoder.clearEncoder();
+                            driveIndex = 10;
+                          }
+                        break;
+                        
+                        case 10: // turn to face the same direction as initial direction
+                        Bot.Right("D1", 255, 255);
+                          if (abs(LeftEncoder.lRawEncoderCount) >= 1273){ // 1273 => 180 degree rotation (for LAB 3 bot)
+                            LeftEncoder.clearEncoder();
+                            RightEncoder.clearEncoder();
+                            driveIndex = 11; //go to case 2
+                          }
+                        break;
+                        
+                        case 11: // stop
                         Bot.Stop("D1");
-                        driveIndex = 9;
+                        LeftEncoder.clearEncoder();
+                        RightEncoder.clearEncoder();
+                        driveIndex = 12;
                         break;
                      }
-                // }
-              }
+                }
             }
             else {                                                             // stop when motors are disabled
                Bot.Stop("D1");  
             }
             break;
 
-
          case 2:  //add your code to do something
             robotModeIndex = 0; //  !!!!!!!  remove if using the case
             break;
-
-
-         case 3:  //add your code to do something
-            robotModeIndex = 0; //  !!!!!!!  remove if using the case
-            break;
-
-
-         case 4:  //add your code to do something
-            robotModeIndex = 0; //  !!!!!!!  remove if using the case
-            break;
-
-
-         case 5: //add your code to do something
-            robotModeIndex = 0; //  !!!!!!!  remove if using the case
-            break;
-
-
-         case 6: //add your code to do something
-            robotModeIndex = 0; //  !!!!!!!  remove if using the case
-            break;
-
 
       }
       // Update brightness of heartbeat display on SmartLED
