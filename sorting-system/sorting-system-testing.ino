@@ -65,10 +65,10 @@ unsigned long previousMicros;                      // last microsecond count
 unsigned long currentMicros;                       // current microsecond count
 //int potVal;                                        // input value from the potentiometer
 int servoPos;                                      // desired servo angle
-bool hasDumped = false;
+bool hasSwept = false;
 unsigned long timer30ms = 0;
 bool timeUp30ms = false;
-int i = 0;
+bool hasDumped = false;
 
 // Declare SK6812 SMART LED object
 //   Argument 1 = Number of LEDs (pixels) in use
@@ -114,7 +114,7 @@ void setup() {
   pinMode(pushButtonP0, INPUT_PULLUP); // configure GPIO for push button with internal pullup resistor
 }
 
-int l = 100, r = 0;
+int i = 0, l = 100, r = 0;
 void loop() {
 
 
@@ -133,32 +133,32 @@ void loop() {
   
   if (timeUp30ms) {
     timeUp30ms = false;
-    if (digitalRead(pushButtonP0) == LOW) { // when push button is pressed, it reads LOW
+    if (digitalRead(pushButtonP0) == LOW&&!hasSwept) { // when push button is pressed, it reads LOW
         Sweep(1);
-        Dump(1);
-        Dump(2);
-        // for (l; l>=0; l-=2, r+=2) { 
-        //   ledcWrite(leftServoChannel, degreesToDutyCycle(l)); // set the desired servo position
-        //   ledcWrite(rightServoChannel, degreesToDutyCycle(r));
-        //   delay(30);
-        // }
-        // for (l; l<=100; l+=2, r-=2) { 
-        //   ledcWrite(leftServoChannel, degreesToDutyCycle(l)); // set the desired servo position
-        //   ledcWrite(rightServoChannel, degreesToDutyCycle(r));
-        //   delay(30);
-        // }
         if (i>=90) {
+          hasSwept = true;
+        }
+    }
+
+    else if (hasSwept) {
+      if (!hasDumped) {
+        Dump(1); //
+        if (l<=0) {
           hasDumped = true;
         }
-    } 
-    if (hasDumped) {
+      }
+      else {
+        Dump(2);
+      }
+
       Sweep(2);
       if (i<=0) {
+        hasSwept = false;
         hasDumped = false;
       }
     }
   }
-  
+  Serial.printf("%d\n", i);
   doHeartbeat();                                   // update heartbeat LED
 }
 
@@ -221,19 +221,23 @@ long degreesToDutyCycle(int deg) {
 
   void Dump(int index) {
     switch (index) {
-      case 1:
-        for (l = 100, r = 0; l>=0; l-=2, r+=2) { 
+      case 1: // bucket goes up
+        // for (l = 100, r = 0; l>=0; l-=2, r+=2) { 
           ledcWrite(leftServoChannel, degreesToDutyCycle(l)); // set the desired servo position
           ledcWrite(rightServoChannel, degreesToDutyCycle(r));
-          delay(30);
-        }
+          l-=2;
+          r+=2;
+          // delay(30);
+        // }
       break;
-      case 2:
-        for (l = 0, r = 100; l<=90; l+=2, r-=2) { 
+      case 2: // bucket goes down
+        // for (l = 0, r = 100; l<=100; l+=2, r-=2) { 
             ledcWrite(leftServoChannel, degreesToDutyCycle(l)); // set the desired servo position
             ledcWrite(rightServoChannel, degreesToDutyCycle(r));
-            delay(30);
-          }
+            l+=2;
+            r-=2;
+          //   delay(30);
+          // }
       break;
     }
   }
