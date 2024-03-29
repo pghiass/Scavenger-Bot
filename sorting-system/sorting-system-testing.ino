@@ -40,6 +40,8 @@
 // Function declarations
 void doHeartbeat();
 long degreesToDutyCycle(int deg);
+void sweep(int index);
+void pause(int msDelay);
 
 // push button on GPIO0
 const int pushButtonP0 = 0;
@@ -63,12 +65,13 @@ unsigned long curMillis      = 0;                  // current time, in milliseco
 unsigned long prevMillis     = 0;                  // start time for delay cycle, in milliseconds
 unsigned long previousMicros;                      // last microsecond count
 unsigned long currentMicros;                       // current microsecond count
-//int potVal;                                        // input value from the potentiometer
-int servoPos;                                      // desired servo angle
-bool hasSwept = false;
 unsigned long timer30ms = 0;
 bool timeUp30ms = false;
+//int potVal;                                        // input value from the potentiometer
+int servoPos;                                      // desired servo angle
 bool hasDumped = false;
+bool hasSwept = false;
+bool isSorting = false;
 
 // Declare SK6812 SMART LED object
 //   Argument 1 = Number of LEDs (pixels) in use
@@ -114,69 +117,23 @@ void setup() {
   pinMode(pushButtonP0, INPUT_PULLUP); // configure GPIO for push button with internal pullup resistor
 }
 
-int i = 0, l = 100, r = 0;
 void loop() {
 
-
-  currentMicros = micros();                                                   // get current time in microseconds
-    if ((currentMicros - previousMicros) >= 1000) {                             // enter when 1 ms has elapsed
-      previousMicros = currentMicros;                                          // record current time in microseconds
-
-      timer30ms += 1;
-      if (timer30ms > 30) {
-        timer30ms = 0;
-        timeUp30ms = true;
-      }
-    }
-  
-  
-  // if (timeUp30ms) {
-  //   timeUp30ms = false;
-
-  //   if (!hasSwept) {
-  //     hasDumped = false;
-  //     Sweep(1);
-  //   }
-  //   else {
-  //     if (!hasDumped) {
-  //       if (l>0) {
-  //         Dump(1);
-  //       }
-  //       else if (l<=0) {
-  //         Dump(2);
-  //       }
-  //     }
-  //     else {
-  //       Sweep(2);
-  //     }
-  //   }
-
-  // }
-
-
-
-  if (timeUp30ms) {
-    if (!hasSwept) {
-      Sweep(1);
-    }
-    else {
-      if (!hasDumped) {
-          Dump(1);
-      }
-      else {
-        Dump(2);
-        if(l>=100) {
-          Sweep(2);
-        }
-      }
-
-    }
-
-
-
+  if (!hasSwept) { // sweeps if currently open/has not swept
+    sweep(1);
   }
-    
-  Serial.printf("%d\n", i);
+  else { // closes the 
+    if (!hasDumped) {
+      dump(1);
+      pause(1000);
+      dump(2);
+    }
+      sweep(2);
+  }
+
+
+
+
   doHeartbeat();                                   // update heartbeat LED
 }
 
@@ -212,70 +169,59 @@ long degreesToDutyCycle(int deg) {
 
   return dutyCycle;
 }
-  // pushes the rocks into the bucket (and keep/hold them) before dumping into the funnel
-    
-  void Sweep(int index) {
+  // used to push rocks into the bucket (and keep hold them) before dumping into the funnel
+  void sweep(int index) {
+    int i = 0;
     switch (index) {
-      case 1: // closes the 'sweeper'
-        // for (i = 0; i <= 90; i+=5) {
-          if (i<=90) {
-            ledcWrite(cServoChannel, degreesToDutyCycle(i));
-            i+=5;
-          }
-          else {
-            hasSwept = true;
-          }
-          // delay(30);
-        // }
+      case 1: // closes the sweeper
+        for (i = 0; i <= 100; i+=1) {
+          ledcWrite(cServoChannel, degreesToDutyCycle(i));
+          pause(5);
+        }
+        hasSwept = true;
       break;
-      case 2: // opens the 'sweeper'
-        // for (i = 90; i >= 0; i-=5) {
-          if (i>=0) {
-            ledcWrite(cServoChannel, degreesToDutyCycle(i));
-            i-=5;
-          }
-          // else {
-          //   hasSwept = false;
-          // }
-        //   delay(30);
-        // }
+      case 2: // opens the sweeper
+        for (i = 100; i >= 0; i-=1) {
+          ledcWrite(cServoChannel, degreesToDutyCycle(i));
+          pause(5);
+        }
       break;
     }
   }
 
-  void Dump(int index) {
+  void dump(int index) {
+    int l, r;
     switch (index) {
       case 1: // bucket goes up
-        // for (l = 100, r = 0; l>=0; l-=2, r+=2) { 
-          if (l>=0) {
+        for (l = 110, r = 0; l>=0; l-=2, r+=2) { 
             ledcWrite(leftServoChannel, degreesToDutyCycle(l)); // set the desired servo position
             ledcWrite(rightServoChannel, degreesToDutyCycle(r));
-            l-=2;
-            r+=2;
+            pause(30);
           }
-          else {
-            hasDumped = true;
-          }
-          // delay(30);
-        // }
       break;
       case 2: // bucket goes down
-        // for (l = 0, r = 100; l<=100; l+=2, r-=2) { 
-          if (l<=100) {
+        for (l = 0, r = 110; l<=110; l+=2, r-=2) { 
             ledcWrite(leftServoChannel, degreesToDutyCycle(l)); // set the desired servo position
             ledcWrite(rightServoChannel, degreesToDutyCycle(r));
-            l+=2;
-            r-=2;
+            pause(30);
           }
-          // else {
-          //   hasDumped = false;
-          // }
-          //   delay(30);
-          // }
+          hasDumped = true;
       break;
     }
   }
 
-  void pause(unsigned long time) {
-    whil
+  // pauses the program by 'msDelay' milliseconds
+  void pause(int msDelay) {
+    bool timeUp = false;
+    unsigned long timerVal = 0;
+    while(!timeUp) {
+      currentMicros = micros();
+      if ((currentMicros-previousMicros)>=1000) {
+        previousMicros = currentMicros;
+        timerVal += 1;
+        if (timerVal >= msDelay) {
+          timeUp = true;
+        }
+      }
+    }
   }
