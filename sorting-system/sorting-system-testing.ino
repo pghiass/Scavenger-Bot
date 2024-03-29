@@ -128,36 +128,54 @@ void loop() {
         timeUp30ms = true;
       }
     }
-
-
   
-  if (timeUp30ms) {
-    timeUp30ms = false;
-    if (digitalRead(pushButtonP0) == LOW&&!hasSwept) { // when push button is pressed, it reads LOW
-        Sweep(1);
-        if (i>=90) {
-          hasSwept = true;
-        }
-    }
+  
+  // if (timeUp30ms) {
+  //   timeUp30ms = false;
 
-    else if (hasSwept) {
+  //   if (!hasSwept) {
+  //     hasDumped = false;
+  //     Sweep(1);
+  //   }
+  //   else {
+  //     if (!hasDumped) {
+  //       if (l>0) {
+  //         Dump(1);
+  //       }
+  //       else if (l<=0) {
+  //         Dump(2);
+  //       }
+  //     }
+  //     else {
+  //       Sweep(2);
+  //     }
+  //   }
+
+  // }
+
+
+
+  if (timeUp30ms) {
+    if (!hasSwept) {
+      Sweep(1);
+    }
+    else {
       if (!hasDumped) {
-        Dump(1); //
-        if (l<=0) {
-          hasDumped = true;
-        }
+          Dump(1);
       }
       else {
         Dump(2);
+        if(l>=100) {
+          Sweep(2);
+        }
       }
 
-      Sweep(2);
-      if (i<=0) {
-        hasSwept = false;
-        hasDumped = false;
-      }
     }
+
+
+
   }
+    
   Serial.printf("%d\n", i);
   doHeartbeat();                                   // update heartbeat LED
 }
@@ -204,6 +222,9 @@ long degreesToDutyCycle(int deg) {
             ledcWrite(cServoChannel, degreesToDutyCycle(i));
             i+=5;
           }
+          else {
+            hasSwept = true;
+          }
           // delay(30);
         // }
       break;
@@ -213,6 +234,9 @@ long degreesToDutyCycle(int deg) {
             ledcWrite(cServoChannel, degreesToDutyCycle(i));
             i-=5;
           }
+          // else {
+          //   hasSwept = false;
+          // }
         //   delay(30);
         // }
       break;
@@ -223,21 +247,35 @@ long degreesToDutyCycle(int deg) {
     switch (index) {
       case 1: // bucket goes up
         // for (l = 100, r = 0; l>=0; l-=2, r+=2) { 
-          ledcWrite(leftServoChannel, degreesToDutyCycle(l)); // set the desired servo position
-          ledcWrite(rightServoChannel, degreesToDutyCycle(r));
-          l-=2;
-          r+=2;
+          if (l>=0) {
+            ledcWrite(leftServoChannel, degreesToDutyCycle(l)); // set the desired servo position
+            ledcWrite(rightServoChannel, degreesToDutyCycle(r));
+            l-=2;
+            r+=2;
+          }
+          else {
+            hasDumped = true;
+          }
           // delay(30);
         // }
       break;
       case 2: // bucket goes down
         // for (l = 0, r = 100; l<=100; l+=2, r-=2) { 
+          if (l<=100) {
             ledcWrite(leftServoChannel, degreesToDutyCycle(l)); // set the desired servo position
             ledcWrite(rightServoChannel, degreesToDutyCycle(r));
             l+=2;
             r-=2;
+          }
+          // else {
+          //   hasDumped = false;
+          // }
           //   delay(30);
           // }
       break;
     }
+  }
+
+  void pause(unsigned long time) {
+    whil
   }
