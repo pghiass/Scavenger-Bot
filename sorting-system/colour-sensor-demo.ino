@@ -13,7 +13,8 @@
 #include <Adafruit_NeoPixel.h>
 #include <Wire.h>
 #include <SPI.h>
-#include "Adafruit_TCS34725.h"
+#include <Adafruit_TCS34725.h>
+#include <Stepper.h>
 
 // Function declarations
 void doHeartbeat();
@@ -26,12 +27,19 @@ const int cSDA               = 47;                    // GPIO pin for I2C data
 const int cSCL               = 48;                    // GPIO pin for I2C clock
 const int cTCSLED            = 14;                    // GPIO pin for LED on TCS34725
 const int cLEDSwitch         = 46;                    // DIP switch S1-2 controls LED on TCS32725    
+const int stepsInNinetyDegrees = 1313;                // the number of steps on the stepper motor to make it turn 90 degrees
+const long interval = 3000;
 
 // Variables
 boolean heartbeatState       = true;                  // state of heartbeat LED
 unsigned long lastHeartbeat  = 0;                     // time of last heartbeat state change
 unsigned long curMillis      = 0;                     // current time, in milliseconds
 unsigned long prevMillis     = 0;                     // start time for delay cycle, in milliseconds
+boolean wantedObject = false; 
+int stepDir = 1;
+unsigned long lastStepMove = 0; // Time of last servo position update
+
+Stepper stepper (stepsInNinetyDegrees, 39, 40);       // constructor for stepper object on pins 39 and 40
 
 // Declare SK6812 SMART LED object
 //   Argument 1 = Number of LEDs (pixels) in use
@@ -55,6 +63,8 @@ Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_2_4MS, TCS347
 bool tcsFlag = 0;                                     // TCS34725 flag: 1 = connected; 0 = not found
 
 void setup() {
+  stepper.setSpeed(80);                               // set speed of stepper motor to 80 rpm
+  
   Serial.begin(115200);                               // Standard baud rate for ESP32 serial monitor
 
   // Set up SmartLED
@@ -67,7 +77,6 @@ void setup() {
   Wire.setPins(cSDA, cSCL);                           // set I2C pins for TCS34725
   pinMode(cTCSLED, OUTPUT);                           // configure GPIO to control LED on TCS34725
   pinMode(cLEDSwitch, INPUT_PULLUP);                  // configure GPIO to set state of TCS34725 LED 
-  pinMode(41, OUTPUT);
 
   // Connect to TCS34725 colour sensor
   if (tcs.begin()) {
@@ -81,6 +90,7 @@ void setup() {
 }
 
 void loop() {
+  unsigned long currentMillis = millis();
   uint16_t r, g, b, c;                                // RGBC values from TCS34725
   
   digitalWrite(cTCSLED, !digitalRead(cLEDSwitch));    // turn on onboard LED if switch state is low (on position)
@@ -89,12 +99,21 @@ void loop() {
 #ifdef PRINT_COLOUR            
       Serial.printf("R: %d, G: %d, B: %d, C %d\n", r, g, b, c);
 #endif
-  if ((g>r&&g>b)&&(g>1.3*b)&&(g>1.3*r)){
-    Serial.printf("Green");
-    digitalWrite(41, HIGH);
-  }
-  else {
-    digitalWrite(41, LOW);
+  
+   if (currentMillis - lastStepMove >= interval) {
+    lastStepMove = currentMillis; // Update the last update time
+
+    if ((g>r&&g>b)&&(g>1.3*b)&&(g>1.3*r)){              // check if the colour is green, then 
+      Serial.printf("Green");
+      stepDir = 1;
+      stepper.step(stepDir * stepsInNinetyDegrees);
+
+    }
+    else {
+      Serial.printf("Not green");
+      stepDir = -1;
+      stepper.step(stepDir * stepsInNinetyDegrees);
+    }
   }
 
   }
