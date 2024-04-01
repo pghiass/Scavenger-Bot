@@ -18,6 +18,7 @@
 
 // Function declarations
 void doHeartbeat();
+void pause(int msDelay);
 
 // Constants
 const int cHeartbeatInterval = 75;                    // heartbeat update interval, in milliseconds
@@ -27,7 +28,7 @@ const int cSDA               = 47;                    // GPIO pin for I2C data
 const int cSCL               = 48;                    // GPIO pin for I2C clock
 const int cTCSLED            = 14;                    // GPIO pin for LED on TCS34725
 const int cLEDSwitch         = 46;                    // DIP switch S1-2 controls LED on TCS32725    
-const int stepsInNinetyDegrees = 1313;                // the number of steps on the stepper motor to make it turn 90 degrees
+const int stepsInNinetyDegrees = 1035;                // the number of steps on the stepper motor to make it turn 90 degrees
 const long interval = 3000;
 
 // Variables
@@ -35,7 +36,9 @@ boolean heartbeatState       = true;                  // state of heartbeat LED
 unsigned long lastHeartbeat  = 0;                     // time of last heartbeat state change
 unsigned long curMillis      = 0;                     // current time, in milliseconds
 unsigned long prevMillis     = 0;                     // start time for delay cycle, in milliseconds
-boolean wantedObject = false; 
+unsigned long previousMicros;                      // last microsecond count
+unsigned long currentMicros;                       // current microsecond count
+// boolean wantedObject = false; 
 int stepDir = 1;
 unsigned long lastStepMove = 0; // Time of last servo position update
 
@@ -82,41 +85,69 @@ void setup() {
   if (tcs.begin()) {
     Serial.printf("Found TCS34725 colour sensor\n");
     tcsFlag = true;
-  } 
+  }
   else {
     Serial.printf("No TCS34725 found ... check your connections\n");
     tcsFlag = false;
   }
 }
-
+bool temp = true;
+  uint16_t r, g, b, c, r1, g1, b1;                                // RGBC values from TCS34725
 void loop() {
   unsigned long currentMillis = millis();
-  uint16_t r, g, b, c;                                // RGBC values from TCS34725
   
   digitalWrite(cTCSLED, !digitalRead(cLEDSwitch));    // turn on onboard LED if switch state is low (on position)
   if (tcsFlag) {                                      // if colour sensor initialized
-    tcs.getRawData(&r, &g, &b, &c);                   // get raw RGBC values
-#ifdef PRINT_COLOUR            
-      Serial.printf("R: %d, G: %d, B: %d, C %d\n", r, g, b, c);
-#endif
-  
-   if (currentMillis - lastStepMove >= interval) {
-    lastStepMove = currentMillis; // Update the last update time
-
-    if ((g>r&&g>b)&&(g>1.3*b)&&(g>1.3*r)){              // check if the colour is green, then 
-      Serial.printf("Green");
-      stepDir = 1;
-      stepper.step(stepDir * stepsInNinetyDegrees);
-
+    // tcs.getRawData(&r, &g, &b, &c);                   // get raw RGBC values
+    if (true) {
+      // if (temp) {
+      //   // stepDir = -1;
+      //   // stepper.step(stepDir * stepsInNinetyDegrees/2); // rotate 45 degrees
+      //   temp = false;
+      //   r1 = r;
+      //   g1 = g;
+      //   b1 = b;
+      // }
+      // tcs.getRawData(&r, &g, &b, &c); // second rock
+      // if (!temp) {
+      //   r1 = r;
+      //   g1 = g;
+      //   b1 = b;
+      // }
+      // if (temp) {
+      //   Serial.printf("Not green ");
+      //   Serial.printf("R: %d, G: %d, B: %d, C %d\n", r, g, b, c);
+      //   stepDir = -1;
+      //   stepper.step(stepDir * stepsInNinetyDegrees);
+      //   temp = false;
+      // }
+      // else if ((g1>r1&&g1>b1)&&(g1>1.15*b1)&&(g1>1.15*r1)){ // first rock condition
+     
+      if (isGreen(r,g,b)) {
+        Serial.printf("Green ");
+        Serial.printf("R: %d, G: %d, B: %d, C: %d\n", r, g, b, c);
+        delay(3000);
+        tcs.getRawData(&r, &g, &b, &c);
+        stepDir = 1;
+        stepper.step(stepDir * stepsInNinetyDegrees);
+      }
+      else {
+        Serial.printf("Not green ");
+        Serial.printf("R: %d, G: %d, B: %d, C %d\n", r, g, b, c);
+        delay(3000);
+        tcs.getRawData(&r, &g, &b, &c);
+        stepDir = -1;
+        stepper.step(stepDir * stepsInNinetyDegrees);
+      }
+      
     }
     else {
-      Serial.printf("Not green");
-      stepDir = -1;
-      stepper.step(stepDir * stepsInNinetyDegrees);
+      Serial.printf("No Stone R: %d, G: %d, B: %d, C %d\n", r, g, b, c);
     }
   }
-
-  }
+  pause(500);
+    
+  
   doHeartbeat();                                      // update heartbeat LED
 }
 
@@ -135,3 +166,42 @@ void doHeartbeat() {
     SmartLEDs.show();                                 // update LED
   }
 }
+
+  // pauses the program by 'msDelay' milliseconds
+  void pause(int msDelay) {
+    bool timeUp = false;
+    unsigned long timerVal = 0;
+    while(!timeUp) {
+      currentMicros = micros();
+      if ((currentMicros-previousMicros)>=1000) {
+        previousMicros = currentMicros;
+        timerVal += 1;
+        if (timerVal >= msDelay) {
+          timeUp = true;
+        }
+      }
+    }
+  }
+
+  // returns true if the rgb values represent a stone
+  // returns false if the rgb values represent absence of a stone
+   bool hasStone(int r, int g, int b) {
+      if ((44>=r&&r>=36)&&(45>=g&&g>=37)&&(43>=b&&b>=36)) { // NOTE: rgb values may be lowered when the slope increases
+        return false;
+      }
+      else if ((r+g+b)/3>=120) { // filter random spikes
+        return false;
+      }
+      else {
+        return true;
+      }
+    }
+
+  bool isGreen(int r, int g, int b) {
+    if ((r+5)<=g&&(b+5)<=g) { // NOTE: rgb values may be lowered when the slope increases
+      return true;
+    }
+    else {
+      return false;
+    }
+  }
