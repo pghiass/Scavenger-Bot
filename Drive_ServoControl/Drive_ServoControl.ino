@@ -157,10 +157,6 @@ Encoders RightEncoder = Encoders();  // Instance of Encoders for right encoder d
 IR Scan = IR();                                                                // instance of IR for detecting IR signals
 NewPing sonar(TRIG_PIN, ECHO_PIN, MAX_DISTANCE);  // Instance of ultrasonic sensor
 
-//my code
-int rotationCounter = 1;
-//int turned_amount; // to record how much it turned when looking for the ball
-
 
 void setup() {
 #if defined DEBUG_DRIVE_SPEED || DEBUG_ENCODER_COUNT
@@ -185,8 +181,8 @@ void setup() {
   pinMode(MOTOR_ENABLE_SWITCH, INPUT_PULLUP);  // set up motor enable switch with internal pullup
   pinMode(MODE_BUTTON, INPUT_PULLUP);          // Set up mode pushbutton
   modePBDebounce = 0;                          // reset debounce timer count
-   pinMode(TRIG_PIN, OUTPUT);                  // trigger pin will output signal
-   pinMode(ECHO_PIN, INPUT);                   // echo pin will receive signal
+  pinMode(TRIG_PIN, OUTPUT);                   // trigger pin will output signal
+  pinMode(ECHO_PIN, INPUT);                    // echo pin will receive signal
 
   pinMode(cServoPin, OUTPUT);               // configure servo GPIO for output
   ledcSetup(cServoChannel, 50, 14);         // setup for channel for 50 Hz, 14-bit resolution
@@ -308,25 +304,22 @@ void loop() {
           #endif
 
           switch (driveIndex) {
-            case 0:  // Drive Forward
+            case 0:  // drive forward and collect stones
 
-              // ledcWrite(leftServoChannel, degreesToDutyCycle(106));  // set the desired servo position
-              // ledcWrite(rightServoChannel, degreesToDutyCycle(4));
-
-              Bot.Forward("D1", leftDriveSpeed, rightDriveSpeed);  //drive ID, left speed, right speed
-              if (abs(LeftEncoder.lRawEncoderCount) >= 4153/3) {     // 8306 => 100 cm
+              Bot.Forward("D1", leftDriveSpeed, rightDriveSpeed);  // drive ID, left speed, right speed
+              if (abs(LeftEncoder.lRawEncoderCount) >= 4153/3) {   // 8306 => 100 cm, 4153/3 ~ 16cm
                 LeftEncoder.clearEncoder();
                 RightEncoder.clearEncoder();
 
-                Bot.Stop("D1");
+                Bot.Stop("D1"); // stop driving
                 pause(1000);
-                sweep(1);
-                dump(1);
+                sweep(1);       // close the sweeper
+                dump(1);        // lift the bucket and dump the contents into the funnel
                 pause(1000);
-                dump(2);
-                sweep(2);
+                dump(2);        // return bucket to original position
+                sweep(2);       // return sweeper to original position
                 pause(1000);
-               if (numOfLoops >= 3) {  // if loop num == 2, stop looping
+               if (numOfLoops >= 3) {  // loop this case 3 times
                   numOfLoops = 0;
                   driveIndex = 1;
                 } else {
@@ -337,36 +330,36 @@ void loop() {
 
               break;
 
-            case 1:  // Rotate 90 degrees CW
+            case 1:  // rotate 90 degrees CW
               Bot.Right("D1", 255, 255);
-              if (abs(LeftEncoder.lRawEncoderCount) >= 1000) {  // 1273 => 180 degree rotation (for LAB 3 bot)
-                LeftEncoder.clearEncoder();
+              if (abs(LeftEncoder.lRawEncoderCount) >= 1000) {   // 1000 encoder counts ~ 90 degrees
+                LeftEncoder.clearEncoder();                      // 1273 => 180 degree rotation (for LAB 3 bot)
                 RightEncoder.clearEncoder();
-                driveIndex = 2;  //go to case 2
+                driveIndex = 2;
               }
               break;
 
-            case 2:                                                //drive forward 25 cm
-              Bot.Forward("D1", leftDriveSpeed, rightDriveSpeed);  //drive ID, left speed, right speed
-              if (abs(LeftEncoder.lRawEncoderCount) >= 2077) {     // 2077 => 25 cm forward
+            case 2:  // drive forward 25 cm
+              Bot.Forward("D1", leftDriveSpeed, rightDriveSpeed); 
+              if (abs(LeftEncoder.lRawEncoderCount) >= 2077) {   // 2077 ~ 25 cm
                 LeftEncoder.clearEncoder();
                 RightEncoder.clearEncoder();
                 driveIndex = 3;
               }
               break;
 
-            case 3:
+            case 3:  // rotate 90 degrees CW
               Bot.Right("D1", 255, 255);
-              if (abs(LeftEncoder.lRawEncoderCount) >= 1000) {  // 1273 => 180 degree rotation (for LAB 3 bot)
+              if (abs(LeftEncoder.lRawEncoderCount) >= 1000) {   // 1000 encoder counts ~ 90 degrees
                 LeftEncoder.clearEncoder();
                 RightEncoder.clearEncoder();
                 driveIndex = 4;
               }
               break;
 
-            case 4:
-              Bot.Forward("D1", leftDriveSpeed, rightDriveSpeed);  //drive ID, left speed, right speed
-              if (abs(LeftEncoder.lRawEncoderCount) >= 3322/3) {     // 8306 => 100 cm
+            case 4:  // drive forwards and collect stones
+              Bot.Forward("D1", leftDriveSpeed, rightDriveSpeed);
+              if (abs(LeftEncoder.lRawEncoderCount) >= 3322/3) {   // 3322/3 ~ 13 cm
                 LeftEncoder.clearEncoder();
                 RightEncoder.clearEncoder();
                 Bot.Stop("D1");
@@ -377,18 +370,17 @@ void loop() {
                 dump(2);
                 sweep(2);
                 pause(1000);
-                if (numOfLoops >= 3) {  // if loop num == 2, stop looping
+                if (numOfLoops >= 3) {  // loop this case 3 times
                   numOfLoops = 0;
                   driveIndex = 7;
                 } else {
                   driveIndex = 4;
                   numOfLoops++;  // initially zero
                 }
-                
               }
 
               break;
-
+            /* // These 2 cases were not used in the final run
             case 5:
               Bot.Left("D1", 255, 255);
               if (abs(LeftEncoder.lRawEncoderCount) >= 1050) {  // 1273 => 180 degree rotation (for LAB 3 bot)
@@ -408,40 +400,32 @@ void loop() {
                 driveIndex = 7;
               }
               break;
-
-            case 7:
+            */
+           
+            case 7:  // rotate 90 degrees CW
               Bot.Right("D1", 255, 255);
               if (abs(LeftEncoder.lRawEncoderCount) >= 1050) {  // 1273 => 180 degree rotation (for LAB 3 bot)
                 LeftEncoder.clearEncoder();
                 RightEncoder.clearEncoder();
-                Serial.printf("case 7 ends");
-                Serial.printf("%d", numOfLoops);
                 driveIndex = 9;
-                // if (numOfLoops >= 2) {  // if loop num == 2, stop looping
-                //   driveIndex = 8;
-                // } else {
-                //   driveIndex = 0;
-                //   numOfLoops++;  // initially zero
-                // }
               }
               break;
-
+            /* // This case was not used in the final run
             case 8:
               Bot.Left("D1", 255, 255);                         // turn robot to go back to start
-              if (abs(LeftEncoder.lRawEncoderCount) >= 1050) {  // 90 degree rotation (scavenger bot)   // 1273 => 180 degree rotation (for LAB 3 bot)
+              if (abs(LeftEncoder.lRawEncoderCount) >= 1050) {  // 1050 ~ 90 degrees
                 LeftEncoder.clearEncoder();
                 RightEncoder.clearEncoder();
-                driveIndex = 9;  //go to case 2
+                driveIndex = 9;
               }
               break;
-
-            case 9:                                                     // drive back to start
-              Bot.Forward("D1", leftDriveSpeed, rightDriveSpeed);       //drive ID, left speed, right speed
-              if (abs(LeftEncoder.lRawEncoderCount) >= 2180) {  // 25cm * 2 times per cycle * 3 cycles => encoder counts
+            */
+            case 9:  // drive forwards ~ 26 cm
+              Bot.Forward("D1", leftDriveSpeed, rightDriveSpeed);
+              if (abs(LeftEncoder.lRawEncoderCount) >= 2180) {   // 2180 ~ 26 cm
                 LeftEncoder.clearEncoder();
                 RightEncoder.clearEncoder();
-
-                driveIndex = 10;  //go to case1
+                driveIndex = 10;
               }
 
               break;
@@ -449,32 +433,32 @@ void loop() {
 
             case 10:  // turn to face the same direction as initial direction
               Bot.Right("D1", 255, 255);
-              if (abs(LeftEncoder.lRawEncoderCount) >= 1050) {  // 1273 => 180 degree rotation (for LAB 3 bot)
+              if (abs(LeftEncoder.lRawEncoderCount) >= 1050) {  // 1050 ~ 90 degrees
                 LeftEncoder.clearEncoder();
                 RightEncoder.clearEncoder();
-                driveIndex = 11;  //go to case 2
+                driveIndex = 11;
               }
               break;
 
-            case 11:  // stop
+            case 11:  // stop driving and dump contents into funnel
               Bot.Stop("D1");
               pause(1000);
-              sweep(1);
-              dump(1);
+              sweep(1);    // close the sweper
+              dump(1);     // lift the bucket
               pause(1000);
               LeftEncoder.clearEncoder();
               RightEncoder.clearEncoder();
               driveIndex = 12;
               break;
 
-            case 12:  //scan for IR
+            case 12:  // scan for IR
               Bot.Left("D1", leftDriveSpeed - 55, rightDriveSpeed - 55);
 
               if(Scan.Available()){
-                IRdata = Scan.Get_IR_Data();                                     // read the character from the IR sensor
+                IRdata = Scan.Get_IR_Data();     // read the character from the IR sensor
                                               
                 Serial.printf("%d\n" , IRdata);
-                if ((IRdata == 'U')){                                            // if the signal is strong, the bot will stop and move to next case
+                if ((IRdata == 'U')){            // if the signal is strong, the bot will stop and move to next case
                   Bot.Stop("D1");
                   Serial.println("***IR DETECTED***");                                            
                   driveIndex = 13;
@@ -483,39 +467,37 @@ void loop() {
               break;
 
             case 13:// go towards IR base
-              digitalWrite(TRIG_PIN, LOW);                                      // ultrasonic sensor sends out and "listens" for signal coming back
+              digitalWrite(TRIG_PIN, LOW);        // ultrasonic sensor sends out and "listens" for signal coming back
               delayMicroseconds(2);
               digitalWrite(TRIG_PIN, HIGH);
               delayMicroseconds(10);
               digitalWrite(TRIG_PIN, LOW);
 
               duration = pulseIn(ECHO_PIN, HIGH);
-              distance = (duration*.0343)/2;                                    // calculate the distance based on the speed of sound waves
+              distance = (duration*.0343)/2;      // calculate the distance based on the speed of sound waves
               Serial.print("Distance: ");
               Serial.println(distance);
-              delay(100);
+              pause(100);
 
               if ((distance >= 2.5 && distance <= 3.5) || (distance > 2300)) { // if the distance is between 2.5 and 3.5 cm, the bot will stop and move to next case
-                
                 Bot.Stop("D1");
                 Serial.print("***STOP***");
                 driveIndex = 14;
               }
               else {
-
                 Bot.Reverse("D1", leftDriveSpeed - 55, rightDriveSpeed - 55); // otherwise the bot will keep reversing backwards
               }
               break;
                 
 
-            case 14:  // Move servo to 30 degrees and back slowly
-              Bot.Reverse("D1", leftDriveSpeed-55, rightDriveSpeed-55);  //drive ID, left speed, right speed
-              if (abs(LeftEncoder.lRawEncoderCount) >= 10) {     // 2077 => 25 cm forward
-                backdoor(1);
+            case 14:  // Open backdoor slowly => drops green stones into collection bin
+              Bot.Reverse("D1", leftDriveSpeed-55, rightDriveSpeed-55);
+              if (abs(LeftEncoder.lRawEncoderCount) >= 10) {
+                backdoor(1); // open the backdoor
                 LeftEncoder.clearEncoder();
                 RightEncoder.clearEncoder();
                 driveIndex = 15;
-                robotModeIndex = 0;
+                robotModeIndex = 0; // set the bot into stop mode
               }
               break;
           }
@@ -546,17 +528,18 @@ void Indicator() {
   SmartLEDs.show();                                           // send the updated pixel colors to the hardware
 }
 
+// open/close the backdoor
 void backdoor(int index) {
   int i = 0;
   switch (index) {
-    case 1:
+    case 1: // opens the backdoor
       for (i = 0; i <= 100; i += 1) {
         ledcWrite(cServoChannel, degreesToDutyCycle(i));
         pause(10);
       }
 
       break;
-    case 2:
+    case 2: // closes the backdoor
       for (i = 100; i >= 0; i -= 1) {
         ledcWrite(cServoChannel, degreesToDutyCycle(i));
         pause(10);
@@ -594,6 +577,7 @@ void pause(int msDelay) {
   }
 }
 
+// open/close the sweeper arm
 void sweep(int index) {
   int i;
   switch (index) {
@@ -631,7 +615,6 @@ void dump(int index) {
         ledcWrite(rightServoChannel, degreesToDutyCycle(r));
         pause(10);
       }
-
       break;
   }
 }
