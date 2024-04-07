@@ -98,36 +98,12 @@ void loop() {
   unsigned long currentMillis = millis();
   
   digitalWrite(cTCSLED, !digitalRead(cLEDSwitch));    // turn on onboard LED if switch state is low (on position)
-  if (tcsFlag) {                                      // if colour sensor initialized
-    // tcs.getRawData(&r, &g, &b, &c);                   // get raw RGBC values
-    if (true) {
-      // if (temp) {
-      //   // stepDir = -1;
-      //   // stepper.step(stepDir * stepsInNinetyDegrees/2); // rotate 45 degrees
-      //   temp = false;
-      //   r1 = r;
-      //   g1 = g;
-      //   b1 = b;
-      // }
-      // tcs.getRawData(&r, &g, &b, &c); // second rock
-      // if (!temp) {
-      //   r1 = r;
-      //   g1 = g;
-      //   b1 = b;
-      // }
-      // if (temp) {
-      //   Serial.printf("Not green ");
-      //   Serial.printf("R: %d, G: %d, B: %d, C %d\n", r, g, b, c);
-      //   stepDir = -1;
-      //   stepper.step(stepDir * stepsInNinetyDegrees);
-      //   temp = false;
-      // }
-      // else if ((g1>r1&&g1>b1)&&(g1>1.15*b1)&&(g1>1.15*r1)){ // first rock condition
-     
-      if (isGreen(r,g,b)) {
+  if (tcsFlag) {                                      // if colour sensor initialized   
+      
+      if (isGreen(r,g,b)) {    // check if the current rgb values represent a green stone
         Serial.printf("Green ");
         Serial.printf("R: %d, G: %d, B: %d, C: %d\n", r, g, b, c);
-        delay(3000);
+        pause(3000);
         tcs.getRawData(&r, &g, &b, &c);
         stepDir = 1;                                                  // motor turns towards green stone path
         stepper.step(stepDir * stepsInNinetyDegrees);
@@ -135,19 +111,16 @@ void loop() {
       else {
         Serial.printf("Not green ");
         Serial.printf("R: %d, G: %d, B: %d, C %d\n", r, g, b, c);
-        delay(3000);
+        pause(3000);
         tcs.getRawData(&r, &g, &b, &c);
         stepDir = -1;                                                 // motor turns towards other stones path
         stepper.step(stepDir * stepsInNinetyDegrees);
       }
-      
-    }
     else {
       Serial.printf("No Stone R: %d, G: %d, B: %d, C %d\n", r, g, b, c);
     }
   }
   pause(500);
-    
   
   doHeartbeat();                                      // update heartbeat LED
 }
@@ -184,13 +157,12 @@ void doHeartbeat() {
     }
   }
 
-  // returns true if the rgb values represent a stone
-  // returns false if the rgb values represent absence of a stone
+   // checks if the given rbg values represent a stone => function was not used
    bool hasStone(int r, int g, int b) {
-      if ((44>=r&&r>=36)&&(45>=g&&g>=37)&&(43>=b&&b>=36)) { // NOTE: rgb values may be lowered when the slope increases
-        return false;
+      if ((44>=r&&r>=36)&&(45>=g&&g>=37)&&(43>=b&&b>=36)) { // NOTE: values are not calibrated
+        return false;                                       // returns false if given rbg values represents the absence of a stone
       }
-      else if ((r+g+b)/3>=120) { // filter random spikes
+      else if ((r+g+b)/3>=120) {                            // filter random spikes
         return false;
       }
       else {
@@ -198,8 +170,9 @@ void doHeartbeat() {
       }
     }
 
+  // checks if the given rgb values represent a green stone
   bool isGreen(int r, int g, int b) {
-    if ((r+4)<=g&&(b+5)<=g) { // NOTE: rgb values may be lowered when the slope increases
+    if ((r+4)<=g&&(b+5)<=g) {                               // if the stone is green, return true
       return true;
     }
     else {
